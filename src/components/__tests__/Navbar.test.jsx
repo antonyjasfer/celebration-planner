@@ -68,3 +68,4 @@ describe('Navbar Component', () => {
     expect(budgetLink).toHaveAttribute('aria-current', 'page');
   });
 });
+

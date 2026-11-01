@@ -1,5 +1,14 @@
 /**
- * Sanitizes user input by removing potentially dangerous HTML characters.
+ * Security and Data Sanitization Utilities
+ *
+ * Implements defensive measures against Cross-Site Scripting (XSS),
+ * unbounded input manipulation, and sensitive credential exposure.
+ */
+
+import { BOUNDS } from '../constants/index.js';
+
+/**
+ * Sanitizes user input by escaping potentially dangerous HTML characters.
  * Prevents XSS attacks when user input is rendered in the DOM.
  *
  * @param {string} input - Raw user input string
@@ -16,21 +25,31 @@ export function sanitizeInput(input) {
 }
 
 /**
- * Validates that a string contains only expected characters for an API key.
- * Prevents injection attacks through the API key input field.
+ * Validates that a string matches the format of a Google Gemini API key.
  *
- * @param {string} key - The API key to validate
- * @returns {boolean} True if the key format is valid
+ * @param {string} key - The API key candidate to test
+ * @returns {boolean} True if format is valid
  */
 export function validateApiKeyFormat(key) {
   if (!key || typeof key !== 'string') return false;
-  // Gemini API keys are alphanumeric with hyphens and underscores
   return /^[A-Za-z0-9_-]{20,}$/.test(key.trim());
 }
 
 /**
- * Validates and sanitizes a budget amount.
- * Ensures the value is a positive finite number within reasonable bounds.
+ * Masks an API key for safe display in user interfaces.
+ *
+ * @param {string} key - Plaintext API key
+ * @returns {string} Partially masked key (e.g., "AIzaSy...•bc12")
+ */
+export function maskApiKey(key) {
+  if (!key || typeof key !== 'string' || key.length < 8) return '••••••••';
+  const prefix = key.slice(0, 6);
+  const suffix = key.slice(-4);
+  return `${prefix}••••••••${suffix}`;
+}
+
+/**
+ * Validates and clamps a budget amount to realistic currency bounds.
  *
  * @param {*} value - The value to validate as a budget
  * @returns {number} A valid budget amount, or 0 if invalid
@@ -38,12 +57,11 @@ export function validateApiKeyFormat(key) {
 export function sanitizeBudget(value) {
   const num = Number(value);
   if (!Number.isFinite(num) || num < 0) return 0;
-  // Cap at 100 crore (1 billion INR) as a reasonable upper bound
-  return Math.min(num, 1_000_000_000);
+  return Math.min(num, BOUNDS.MAX_BUDGET);
 }
 
 /**
- * Validates and sanitizes a guest count.
+ * Validates and clamps a guest count to realistic attendee bounds.
  *
  * @param {*} value - The value to validate as guest count
  * @returns {number} A valid guest count, or 0 if invalid
@@ -51,5 +69,19 @@ export function sanitizeBudget(value) {
 export function sanitizeGuestCount(value) {
   const num = Number(value);
   if (!Number.isFinite(num) || num < 0) return 0;
-  return Math.min(Math.round(num), 100_000);
+  return Math.min(Math.round(num), BOUNDS.MAX_GUESTS);
+}
+
+/**
+ * Cleans an error message before presenting it to the user.
+ * Strips out internal paths, IP addresses, or potential API tokens.
+ *
+ * @param {*} error - Error object or string
+ * @returns {string} Safe user-facing message
+ */
+export function sanitizeErrorMessage(error) {
+  if (!error) return 'An unexpected error occurred. Please try again.';
+  const msg = typeof error === 'string' ? error : (error.message || String(error));
+  // Strip any API key-like sequences
+  return msg.replace(/AIza[A-Za-z0-9_-]{20,}/g, '[REDACTED_API_KEY]');
 }

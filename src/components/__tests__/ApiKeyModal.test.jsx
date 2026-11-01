@@ -66,3 +66,4 @@ describe('ApiKeyModal Component', () => {
     expect(handleClose).toHaveBeenCalledTimes(2);
   });
 });
+

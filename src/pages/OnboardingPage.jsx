@@ -1,15 +1,20 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import {
   Heart, PartyPopper, Music, Star, ArrowRight, ArrowLeft,
   Calendar, Users, Wallet, Sparkles, CheckCircle
 } from 'lucide-react';
 import { createEvent, daysUntil } from '../services/eventStore';
+import { PRIORITY_OPTIONS } from '../constants';
 import './OnboardingPage.css';
 
 /**
- * Onboarding flow for creating a new event plan.
- * Multi-step form that collects all necessary context before AI generates the plan.
+ * Onboarding wizard for collecting event parameters and preferences.
+ * Multi-step contextual flow that shapes AI persona decision-making.
+ *
+ * @param {Object} props
+ * @param {function(string, string=): void} props.showToast - Toast notification dispatcher
  */
 
 const TODAY_ISO = new Date().toISOString().split('T')[0];
@@ -19,15 +24,6 @@ const EVENT_TYPES = [
   { id: 'birthday', label: 'Birthday', icon: PartyPopper, desc: 'Surprise parties, milestone birthdays, kids\' celebrations' },
   { id: 'community', label: 'Community Event', icon: Music, desc: 'Cultural gatherings, religious ceremonies, social events' },
   { id: 'other', label: 'Other Celebration', icon: Star, desc: 'Anniversaries, baby showers, farewells, and more' },
-];
-
-const PRIORITY_OPTIONS = [
-  { id: 'food', label: 'Food & Catering', emoji: '🍽️' },
-  { id: 'venue', label: 'Venue & Ambiance', emoji: '🏛️' },
-  { id: 'decoration', label: 'Decoration & Theme', emoji: '🎨' },
-  { id: 'photography', label: 'Photography & Video', emoji: '📸' },
-  { id: 'entertainment', label: 'Entertainment & Music', emoji: '🎵' },
-  { id: 'guest_experience', label: 'Guest Experience', emoji: '🎁' },
 ];
 
 const TOTAL_STEPS = 4;
@@ -63,7 +59,7 @@ export default function OnboardingPage({ showToast }) {
   const canProceed = () => {
     switch (step) {
       case 1: return form.eventType !== '';
-      case 2: return form.eventName.trim() !== '' && form.budget > 0 && form.guestCount > 0;
+      case 2: return form.eventName.trim() !== '' && Number(form.budget) > 0 && Number(form.guestCount) > 0;
       case 3: return form.eventDate !== '';
       case 4: return true; // Preferences are optional
       default: return false;
@@ -93,7 +89,7 @@ export default function OnboardingPage({ showToast }) {
                 key={i}
                 className={`progress-step ${i + 1 <= step ? 'active' : ''} ${i + 1 < step ? 'completed' : ''}`}
               >
-                {i + 1 < step ? <CheckCircle size={16} /> : <span>{i + 1}</span>}
+                {i + 1 < step ? <CheckCircle size={16} aria-hidden="true" /> : <span>{i + 1}</span>}
               </div>
             ))}
           </div>
@@ -235,7 +231,7 @@ export default function OnboardingPage({ showToast }) {
                   aria-pressed={form.priorities.includes(opt.id)}
                   id={`priority-${opt.id}`}
                 >
-                  <span className="priority-emoji">{opt.emoji}</span>
+                  <span className="priority-emoji" aria-hidden="true">{opt.emoji}</span>
                   <span className="priority-label">{opt.label}</span>
                 </button>
               ))}
@@ -316,3 +312,7 @@ export default function OnboardingPage({ showToast }) {
     </div>
   );
 }
+
+OnboardingPage.propTypes = {
+  showToast: PropTypes.func.isRequired,
+};

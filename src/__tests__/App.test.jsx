@@ -102,3 +102,4 @@ describe('App Routing & Integration', () => {
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
   });
 });
+

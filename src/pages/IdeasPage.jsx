@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import {
   Sparkles, Palette, Utensils, Music, Smile,
   ThumbsUp, ThumbsDown, CheckCircle2,
@@ -6,13 +7,27 @@ import {
 } from 'lucide-react';
 import { updateEvent, formatCurrency } from '../services/eventStore';
 import { generatePersonalizedIdeas } from '../services/gemini';
+import { sanitizeInput } from '../utils/sanitize';
+import { useModalEscape } from '../hooks/useModalEscape';
 import './IdeasPage.css';
 
+/**
+ * Personalized Ideas & Cultural Themes Page.
+ * Visualizes 4-pillar event concept packages (Decor, Food, Activities, Music),
+ * dietary catering options, personal touches, and custom vibe regeneration.
+ *
+ * @param {Object} props
+ * @param {Object} props.event - Active event record
+ * @param {function(string, string=): void} props.showToast - Toast notification dispatcher
+ */
 export default function IdeasPage({ event, showToast }) {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [selectedThemeIndex, setSelectedThemeIndex] = useState(0);
   const [customVibeInput, setCustomVibeInput] = useState('');
   const [showVibeModal, setShowVibeModal] = useState(false);
+
+  // Keyboard accessibility for vibe modal
+  useModalEscape(showVibeModal, () => setShowVibeModal(false));
 
   const ideasData = event.ideas || {
     themes: [],
@@ -24,15 +39,16 @@ export default function IdeasPage({ event, showToast }) {
 
   const handleRegenerateIdeas = async (newPreferences = '') => {
     setIsRegenerating(true);
+    const prefToUse = sanitizeInput(newPreferences || customVibeInput || event.preferences);
     try {
       const freshIdeas = await generatePersonalizedIdeas({
         ...event,
-        preferences: newPreferences || customVibeInput || event.preferences,
+        preferences: prefToUse,
       });
 
       updateEvent(event.id, {
         ideas: freshIdeas,
-        preferences: newPreferences || customVibeInput || event.preferences,
+        preferences: prefToUse,
       });
 
       showToast('Personalized themes & concepts regenerated with AI!', 'success');
@@ -63,22 +79,24 @@ export default function IdeasPage({ event, showToast }) {
             onClick={() => setShowVibeModal(true)}
             id="btn-custom-vibe-modal"
           >
-            <Sparkles size={16} /> Tailor Atmosphere & Vibe
+            <Sparkles size={16} aria-hidden="true" /> Tailor Atmosphere & Vibe
           </button>
         </div>
       </div>
 
       {/* Theme Selection Tabs */}
       {ideasData.themes?.length > 0 && (
-        <div className="theme-selector-bar">
+        <div className="theme-selector-bar" role="tablist" aria-label="Curated theme options">
           {ideasData.themes.map((theme, idx) => (
             <button
               key={idx}
               className={`theme-tab-btn ${selectedThemeIndex === idx ? 'active' : ''}`}
               onClick={() => setSelectedThemeIndex(idx)}
               id={`theme-tab-${idx}`}
+              role="tab"
+              aria-selected={selectedThemeIndex === idx}
             >
-              <Palette size={16} />
+              <Palette size={16} aria-hidden="true" />
               <span>{theme.name}</span>
             </button>
           ))}
@@ -87,7 +105,7 @@ export default function IdeasPage({ event, showToast }) {
 
       {/* Featured Theme Showcase Card */}
       {currentTheme && (
-        <div className="featured-theme-hero glass-card animate-fade-in">
+        <div className="featured-theme-hero glass-card animate-fade-in" role="tabpanel">
           <div className="theme-hero-top">
             <div className="theme-meta">
               <span className="theme-badge">Active AI Recommendation</span>
@@ -110,7 +128,7 @@ export default function IdeasPage({ event, showToast }) {
           <div className="theme-elements-grid">
             <div className="element-card glass-card">
               <div className="element-card-header">
-                <Palette className="text-accent" size={18} />
+                <Palette className="text-accent" size={18} aria-hidden="true" />
                 <h3>Decor & Floral Styling</h3>
               </div>
               <ul className="element-list">
@@ -122,7 +140,7 @@ export default function IdeasPage({ event, showToast }) {
 
             <div className="element-card glass-card">
               <div className="element-card-header">
-                <Utensils className="text-secondary" size={18} />
+                <Utensils className="text-secondary" size={18} aria-hidden="true" />
                 <h3>Menu & Culinary Concepts</h3>
               </div>
               <ul className="element-list">
@@ -134,7 +152,7 @@ export default function IdeasPage({ event, showToast }) {
 
             <div className="element-card glass-card">
               <div className="element-card-header">
-                <Smile className="text-gold" size={18} />
+                <Smile className="text-gold" size={18} aria-hidden="true" />
                 <h3>Guest Activities & Keepsakes</h3>
               </div>
               <ul className="element-list">
@@ -146,7 +164,7 @@ export default function IdeasPage({ event, showToast }) {
 
             <div className="element-card glass-card">
               <div className="element-card-header">
-                <Music className="text-success" size={18} />
+                <Music className="text-success" size={18} aria-hidden="true" />
                 <h3>Music & Entertainment</h3>
               </div>
               <ul className="element-list">
@@ -161,7 +179,7 @@ export default function IdeasPage({ event, showToast }) {
           <div className="theme-pros-cons-grid">
             <div className="pros-box">
               <div className="pros-header">
-                <ThumbsUp size={16} className="text-success" />
+                <ThumbsUp size={16} className="text-success" aria-hidden="true" />
                 <h4>Advantages</h4>
               </div>
               <ul>
@@ -173,7 +191,7 @@ export default function IdeasPage({ event, showToast }) {
 
             <div className="cons-box">
               <div className="cons-header">
-                <ThumbsDown size={16} className="text-warning" />
+                <ThumbsDown size={16} className="text-warning" aria-hidden="true" />
                 <h4>Considerations & Limitations</h4>
               </div>
               <ul>
@@ -224,14 +242,14 @@ export default function IdeasPage({ event, showToast }) {
       <div className="touches-grid">
         <div className="touch-card glass-card">
           <div className="touch-header">
-            <Star size={18} className="text-gold" />
+            <Star size={18} className="text-gold" aria-hidden="true" />
             <h3>Memorable Personal Touches</h3>
           </div>
           <p className="touch-intro">Small, thoughtful details guests cherish long after the celebration:</p>
           <ul className="touch-list">
             {(ideasData.personalTouches || []).map((touch, i) => (
               <li key={i}>
-                <CheckCircle2 size={16} className="text-gold" />
+                <CheckCircle2 size={16} className="text-gold" aria-hidden="true" />
                 <span>{touch}</span>
               </li>
             ))}
@@ -240,14 +258,14 @@ export default function IdeasPage({ event, showToast }) {
 
         <div className="touch-card glass-card">
           <div className="touch-header">
-            <DollarSign size={18} className="text-success" />
+            <DollarSign size={18} className="text-success" aria-hidden="true" />
             <h3>Budget-Friendly Alternatives</h3>
           </div>
           <p className="touch-intro">Clever aesthetic swaps that preserve luxury while cutting costs:</p>
           <ul className="touch-list">
             {(ideasData.budgetFriendlyAlternatives || []).map((alt, i) => (
               <li key={i}>
-                <CheckCircle2 size={16} className="text-success" />
+                <CheckCircle2 size={16} className="text-success" aria-hidden="true" />
                 <span>{alt}</span>
               </li>
             ))}
@@ -257,12 +275,17 @@ export default function IdeasPage({ event, showToast }) {
 
       {/* Tailor Vibe Modal */}
       {showVibeModal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-backdrop" onClick={() => setShowVibeModal(false)} />
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tailor-vibe-title"
+        >
+          <div className="modal-backdrop" onClick={() => setShowVibeModal(false)} aria-hidden="true" />
           <div className="modal-content glass-card vibe-modal-box">
             <div className="modal-header">
-              <h3 className="modal-title">Tailor Theme & Atmosphere</h3>
-              <button className="modal-close" onClick={() => setShowVibeModal(false)}>✕</button>
+              <h3 className="modal-title" id="tailor-vibe-title">Tailor Theme & Atmosphere</h3>
+              <button className="modal-close" onClick={() => setShowVibeModal(false)} aria-label="Close modal">✕</button>
             </div>
 
             <div className="modal-body">
@@ -326,12 +349,12 @@ export default function IdeasPage({ event, showToast }) {
                 >
                   {isRegenerating ? (
                     <>
-                      <Sparkles className="spin-icon" size={16} />
+                      <Sparkles className="spin-icon" size={16} aria-hidden="true" />
                       Curating New Concepts...
                     </>
                   ) : (
                     <>
-                      <Sparkles size={16} />
+                      <Sparkles size={16} aria-hidden="true" />
                       Generate New Concepts
                     </>
                   )}
@@ -345,3 +368,13 @@ export default function IdeasPage({ event, showToast }) {
     </div>
   );
 }
+
+IdeasPage.propTypes = {
+  event: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    eventName: PropTypes.string.isRequired,
+    preferences: PropTypes.string,
+    ideas: PropTypes.object,
+  }).isRequired,
+  showToast: PropTypes.func.isRequired,
+};

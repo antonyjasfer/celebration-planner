@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { Send, Sparkles, Trash2, Bot, User } from 'lucide-react';
 import { addChatMessage, updateEvent } from '../services/eventStore';
 import { chat } from '../services/gemini';
+import { sanitizeInput } from '../utils/sanitize';
 import './ChatPage.css';
 
 const QUICK_PROMPTS = [
@@ -14,6 +16,15 @@ const QUICK_PROMPTS = [
 
 const getCurrentTimestamp = () => new Date().toISOString();
 
+/**
+ * AI Planning Chat Assistant Page.
+ * Context-aware conversational partner with the full event profile
+ * (budget, guest count, days left, priorities) injected into the prompt.
+ *
+ * @param {Object} props
+ * @param {Object} props.event - Active event record
+ * @param {function(string, string=): void} props.showToast - Toast notification dispatcher
+ */
 export default function ChatPage({ event, showToast }) {
   const [messages, setMessages] = useState(() => {
     const history = event.chatHistory || [];
@@ -43,7 +54,9 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (typeof messagesEndRef.current?.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
@@ -51,8 +64,9 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
   }, [messages, isTyping]);
 
   const handleSendMessage = async (textToSend) => {
-    const messageContent = (textToSend || inputMessage).trim();
-    if (!messageContent || isTyping) return;
+    const rawContent = (textToSend || inputMessage).trim();
+    if (!rawContent || isTyping) return;
+    const messageContent = sanitizeInput(rawContent);
 
     const userMsg = {
       role: 'user',
@@ -113,7 +127,7 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
       <div className="chat-header glass-card">
         <div className="chat-header-info">
           <div className="ai-avatar">
-            <Bot size={22} />
+            <Bot size={22} aria-hidden="true" />
           </div>
           <div>
             <h1 className="chat-title">CelebriPlan AI Assistant</h1>
@@ -129,7 +143,7 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
           title="Clear conversation"
           id="btn-clear-chat"
         >
-          <Trash2 size={14} /> Clear Chat
+          <Trash2 size={14} aria-hidden="true" /> Clear Chat
         </button>
       </div>
 
@@ -150,7 +164,7 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
       </div>
 
       {/* Messages Stream */}
-      <div className="messages-stream glass-card" id="chat-messages-container">
+      <div className="messages-stream glass-card" id="chat-messages-container" role="log" aria-live="polite">
         {messages.map((msg, index) => {
           const isUser = msg.role === 'user';
           return (
@@ -159,7 +173,7 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
               className={`message-bubble-row ${isUser ? 'user-row' : 'assistant-row'}`}
             >
               <div className="bubble-avatar">
-                {isUser ? <User size={16} /> : <Sparkles size={16} />}
+                {isUser ? <User size={16} aria-hidden="true" /> : <Sparkles size={16} aria-hidden="true" />}
               </div>
 
               <div className="bubble-wrapper">
@@ -191,10 +205,10 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
         {isTyping && (
           <div className="message-bubble-row assistant-row typing-row">
             <div className="bubble-avatar">
-              <Sparkles size={16} className="spin-icon" />
+              <Sparkles size={16} className="spin-icon" aria-hidden="true" />
             </div>
             <div className="bubble-wrapper">
-              <div className="typing-indicator">
+              <div className="typing-indicator" aria-label="CelebriPlan AI is thinking">
                 <span className="dot" />
                 <span className="dot" />
                 <span className="dot" />
@@ -207,6 +221,7 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
 
       {/* Chat Input Bar */}
       <div className="chat-input-container glass-card">
+        <label htmlFor="chat-user-input" className="sr-only">Message CelebriPlan AI</label>
         <textarea
           className="chat-textarea"
           placeholder="Ask CelebriPlan AI anything about your event... (Press Enter to send)"
@@ -223,9 +238,23 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
           id="btn-send-chat"
           aria-label="Send message"
         >
-          <Send size={16} />
+          <Send size={16} aria-hidden="true" />
         </button>
       </div>
     </div>
   );
 }
+
+ChatPage.propTypes = {
+  event: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    eventName: PropTypes.string.isRequired,
+    eventType: PropTypes.string.isRequired,
+    budget: PropTypes.number.isRequired,
+    guestCount: PropTypes.number.isRequired,
+    eventDate: PropTypes.string,
+    priorities: PropTypes.string,
+    chatHistory: PropTypes.array,
+  }).isRequired,
+  showToast: PropTypes.func.isRequired,
+};

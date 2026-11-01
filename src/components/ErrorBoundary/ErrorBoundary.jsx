@@ -1,8 +1,9 @@
 import { Component } from 'react';
+import PropTypes from 'prop-types';
 
 /**
- * Error Boundary component that catches JavaScript errors in its child
- * component tree and displays a fallback UI instead of crashing.
+ * Error Boundary component that catches uncaught JavaScript errors
+ * in its child component tree and renders an accessible fallback UI.
  *
  * @extends {Component}
  */
@@ -57,3 +58,7 @@ export default class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
+
+ErrorBoundary.propTypes = {
+  children: PropTypes.node.isRequired,
+};

@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Wallet, Calendar,
@@ -6,8 +7,12 @@ import {
 import './Navbar.css';
 
 /**
- * Navigation bar component.
- * Shows branding and event-aware navigation links.
+ * Top navigation bar component.
+ * Displays branding and event-aware navigation links.
+ *
+ * @param {Object} props
+ * @param {Object|null} props.activeEvent - Currently selected event plan
+ * @param {() => void} props.onApiKeyClick - Opens the API key settings modal
  */
 export default function Navbar({ activeEvent, onApiKeyClick }) {
   const location = useLocation();
@@ -62,3 +67,12 @@ export default function Navbar({ activeEvent, onApiKeyClick }) {
     </header>
   );
 }
+
+Navbar.propTypes = {
+  activeEvent: PropTypes.shape({
+    id: PropTypes.string,
+    eventName: PropTypes.string,
+    eventType: PropTypes.string,
+  }),
+  onApiKeyClick: PropTypes.func.isRequired,
+};

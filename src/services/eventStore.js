@@ -1,25 +1,25 @@
 /**
- * Event Store — Client-side state management for CelebriPlan
+ * Event Store — Client-Side Reactive State Management
  *
- * Uses localStorage for persistence across sessions.
- * Provides a simple pub/sub pattern for reactive updates.
+ * Implements a lightweight pub/sub store with localStorage persistence.
+ * Sanitizes all input fields on write and maintains an audit log (changeLog)
+ * of major plan adjustments for adaptive replanning.
  */
 
 import { sanitizeInput, sanitizeBudget, sanitizeGuestCount } from '../utils/sanitize.js';
-
-const STORAGE_KEY = 'celebriplan_events';
-const ACTIVE_EVENT_KEY = 'celebriplan_active_event';
+import { STORAGE_KEYS } from '../constants/index.js';
 
 /** Subscribers listening for state changes */
 const listeners = new Set();
 
 /**
  * Loads all events from localStorage.
+ *
  * @returns {Object[]} Array of saved event plans
  */
 export function loadEvents() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEYS.EVENTS);
     return raw ? JSON.parse(raw) : [];
   } catch {
     console.warn('Failed to load events from storage, returning empty array.');
@@ -28,12 +28,13 @@ export function loadEvents() {
 }
 
 /**
- * Saves all events to localStorage.
+ * Saves all events to localStorage and notifies subscribers.
+ *
  * @param {Object[]} events - Array of event plans to save
  */
 function saveEvents(events) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+    localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(events));
     notifyListeners();
   } catch (error) {
     console.error('Failed to save events:', error);
@@ -42,23 +43,26 @@ function saveEvents(events) {
 
 /**
  * Gets the active event ID from localStorage.
+ *
  * @returns {string|null}
  */
 export function getActiveEventId() {
-  return localStorage.getItem(ACTIVE_EVENT_KEY);
+  return localStorage.getItem(STORAGE_KEYS.ACTIVE_EVENT);
 }
 
 /**
  * Sets the active event ID.
+ *
  * @param {string} eventId
  */
 export function setActiveEventId(eventId) {
-  localStorage.setItem(ACTIVE_EVENT_KEY, eventId);
+  localStorage.setItem(STORAGE_KEYS.ACTIVE_EVENT, eventId);
   notifyListeners();
 }
 
 /**
  * Gets the currently active event plan.
+ *
  * @returns {Object|null}
  */
 export function getActiveEvent() {
@@ -69,7 +73,7 @@ export function getActiveEvent() {
 }
 
 /**
- * Creates a new event plan and returns it.
+ * Creates a new event plan and persists it.
  *
  * @param {Object} params
  * @param {string} params.eventType - wedding | birthday | community | other
@@ -102,11 +106,13 @@ export function createEvent(params) {
     timeline: null,
     vendorChecklist: null,
     ideas: null,
+    // Shortlisted vendors comparison board
+    shortlistedVendors: [],
     // Task tracking
     completedTasks: [],
     // Chat history
     chatHistory: [],
-    // Change log
+    // Change log for adaptive replanning audit
     changeLog: [],
   };
 
@@ -157,6 +163,7 @@ export function updateEvent(eventId, updates) {
 
 /**
  * Deletes an event plan.
+ *
  * @param {string} eventId
  */
 export function deleteEvent(eventId) {
@@ -168,7 +175,7 @@ export function deleteEvent(eventId) {
     if (newActive) {
       setActiveEventId(newActive);
     } else {
-      localStorage.removeItem(ACTIVE_EVENT_KEY);
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_EVENT);
     }
   }
 }
@@ -208,33 +215,39 @@ export function addChatMessage(eventId, role, content) {
   const history = event.chatHistory || [];
   history.push({
     role,
-    content,
+    content: sanitizeInput(content),
     timestamp: new Date().toISOString(),
   });
 
   updateEvent(eventId, { chatHistory: history });
 }
 
-/** Subscribe to state changes */
+/**
+ * Subscribes a listener function to store updates.
+ *
+ * @param {() => void} callback - Callback function
+ * @returns {() => void} Unsubscribe function
+ */
 export function subscribe(callback) {
   listeners.add(callback);
   return () => listeners.delete(callback);
 }
 
-/** Notify all subscribers of a state change */
+/** Notifies all subscribers of a state change */
 function notifyListeners() {
   listeners.forEach(fn => fn());
 }
 
-/** Generate a unique ID */
+/** Generates a pseudo-random unique ID */
 function generateId() {
   return `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
 /**
  * Formats a budget amount in INR (Indian Rupees).
+ *
  * @param {number} amount
- * @returns {string}
+ * @returns {string} Formatted currency string
  */
 export function formatCurrency(amount) {
   if (amount === null || amount === undefined) return '₹0';
@@ -246,9 +259,10 @@ export function formatCurrency(amount) {
 }
 
 /**
- * Formats a date string to a human-readable format.
+ * Formats a date string to a human-readable format in Indian English locale.
+ *
  * @param {string} dateString - ISO date string
- * @returns {string}
+ * @returns {string} Formatted date (e.g., "15 Nov 2026")
  */
 export function formatDate(dateString) {
   if (!dateString) return 'Not set';
@@ -260,9 +274,10 @@ export function formatDate(dateString) {
 }
 
 /**
- * Calculates days remaining until the event.
+ * Calculates days remaining until the event date.
+ *
  * @param {string} eventDate - ISO date string
- * @returns {number}
+ * @returns {number} Non-negative integer of days
  */
 export function daysUntil(eventDate) {
   if (!eventDate) return 0;

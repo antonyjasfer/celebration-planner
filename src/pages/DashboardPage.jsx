@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Sparkles, Calendar, Users, Wallet, CheckCircle2,
   Clock, ArrowRight, RefreshCw, Award, ChevronRight,
-  MessageSquare, ShieldCheck, Trash2
+  MessageSquare, ShieldCheck, Trash2, HelpCircle
 } from 'lucide-react';
 import {
   updateEvent, deleteEvent, toggleTask, formatCurrency,
@@ -14,8 +15,19 @@ import {
   generateVendorChecklist, generatePersonalizedIdeas,
   analyzeChangeImpact
 } from '../services/gemini';
+import { sanitizeInput } from '../utils/sanitize';
+import { useModalEscape } from '../hooks/useModalEscape';
 import './DashboardPage.css';
 
+/**
+ * Main event dashboard.
+ * Serves as central command center with preparedness metrics, category breakdowns,
+ * milestone tracking, and an interactive Adaptive Replanning engine.
+ *
+ * @param {Object} props
+ * @param {Object} props.event - Active event record
+ * @param {function(string, string=): void} props.showToast - Toast notification dispatcher
+ */
 export default function DashboardPage({ event, showToast }) {
   const navigate = useNavigate();
   const allEvents = loadEvents();
@@ -25,6 +37,9 @@ export default function DashboardPage({ event, showToast }) {
   const [changeDescription, setChangeDescription] = useState('');
   const [isAnalyzingChange, setIsAnalyzingChange] = useState(false);
   const [changeAnalysis, setChangeAnalysis] = useState(null);
+
+  // Keyboard accessibility for adaptive replanner modal
+  useModalEscape(showAdaptiveModal, () => setShowAdaptiveModal(false));
 
   // Initialize AI data on first visit if not present
   useEffect(() => {
@@ -87,15 +102,16 @@ export default function DashboardPage({ event, showToast }) {
   };
 
   const handleRunAdaptiveReplanner = async () => {
-    if (!changeDescription.trim()) return;
+    const sanitizedDesc = sanitizeInput(changeDescription.trim());
+    if (!sanitizedDesc) return;
     setIsAnalyzingChange(true);
     setChangeAnalysis(null);
 
     try {
       const analysis = await analyzeChangeImpact({
         currentPlan: event,
-        changeDescription: changeDescription.trim(),
-        changeType,
+        changeDescription: sanitizedDesc,
+        changeType: sanitizeInput(changeType),
       });
       setChangeAnalysis(analysis);
     } catch (err) {
@@ -166,7 +182,7 @@ export default function DashboardPage({ event, showToast }) {
             id="btn-delete-event"
             title="Delete this event"
           >
-            <Trash2 size={15} />
+            <Trash2 size={15} aria-hidden="true" />
             <span className="hide-mobile">Delete</span>
           </button>
         </div>
@@ -180,7 +196,7 @@ export default function DashboardPage({ event, showToast }) {
               {event.eventType.toUpperCase()}
             </span>
             <span className="badge-pill badge-countdown">
-              <Clock size={13} />
+              <Clock size={13} aria-hidden="true" />
               {daysLeft === 0 ? 'Event Day Today!' : `${daysLeft} Days to go`}
             </span>
           </div>
@@ -192,16 +208,16 @@ export default function DashboardPage({ event, showToast }) {
 
           <div className="hero-meta-chips">
             <div className="meta-chip">
-              <Wallet size={15} className="chip-icon text-accent" />
+              <Wallet size={15} className="chip-icon text-accent" aria-hidden="true" />
               <span>Budget: <strong>{formatCurrency(event.budget)}</strong></span>
             </div>
             <div className="meta-chip">
-              <Users size={15} className="chip-icon text-cyan" />
+              <Users size={15} className="chip-icon text-cyan" aria-hidden="true" />
               <span>Guests: <strong>{event.guestCount}</strong></span>
             </div>
             {event.priorities && (
               <div className="meta-chip hide-mobile">
-                <Award size={15} className="chip-icon text-gold" />
+                <Award size={15} className="chip-icon text-gold" aria-hidden="true" />
                 <span>Focus: <strong>{event.priorities}</strong></span>
               </div>
             )}
@@ -220,15 +236,34 @@ export default function DashboardPage({ event, showToast }) {
             onClick={() => setShowAdaptiveModal(true)}
             id="btn-open-adaptive-modal"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={16} aria-hidden="true" />
             <span>AI Adaptive Replanner</span>
           </button>
         </div>
       </div>
 
+      {/* AI Decision Rationale Card - Highlights Context-Aware Logic */}
+      <div className="dash-card glass-card" style={{ marginTop: 'var(--space-6)', borderLeft: '4px solid var(--color-primary)' }}>
+        <div className="card-header" style={{ marginBottom: 'var(--space-2)' }}>
+          <div className="card-header-title">
+            <div className="icon-wrapper icon-ideas">
+              <HelpCircle size={18} aria-hidden="true" />
+            </div>
+            <h3>Contextual AI Decision Rationale</h3>
+          </div>
+        </div>
+        <div className="card-body">
+          <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', lineHeight: 1.6 }}>
+            CelebriPlan configured your plan specifically for a <strong>{event.eventType}</strong> with <strong>{event.guestCount} guests</strong> and a <strong>{formatCurrency(event.budget)}</strong> budget.
+            {event.priorities ? ` Because you prioritized "${event.priorities}", ` : ' '}
+            allocations favor high-impact hospitality touchpoints over high-overhead decor, including a dedicated 5% ({formatCurrency(event.budgetBreakdown?.contingency || Math.round(event.budget * 0.05))}) safety buffer.
+          </p>
+        </div>
+      </div>
+
       {isInitializingAI && (
         <div className="ai-loader-card glass-card animate-pulse">
-          <Sparkles className="spin-icon" size={24} />
+          <Sparkles className="spin-icon" size={24} aria-hidden="true" />
           <div>
             <h4>CelebriPlan AI is generating your customized blueprint...</h4>
             <p>Creating tailored budget allocations, milestone timelines, vendor criteria, and themes.</p>
@@ -243,12 +278,12 @@ export default function DashboardPage({ event, showToast }) {
           <div className="card-header">
             <div className="card-header-title">
               <div className="icon-wrapper icon-wallet">
-                <Wallet size={18} />
+                <Wallet size={18} aria-hidden="true" />
               </div>
               <h3>Budget Allocation</h3>
             </div>
             <Link to="/budget" className="card-link" id="link-view-budget">
-              Details <ChevronRight size={16} />
+              Details <ChevronRight size={16} aria-hidden="true" />
             </Link>
           </div>
           <div className="card-body">
@@ -278,7 +313,7 @@ export default function DashboardPage({ event, showToast }) {
             </div>
 
             <div className="card-footer-tip">
-              <ShieldCheck size={14} className="text-success" />
+              <ShieldCheck size={14} className="text-success" aria-hidden="true" />
               <span>Contingency fund: {formatCurrency(event.budgetBreakdown?.contingency || Math.round(event.budget * 0.05))}</span>
             </div>
           </div>
@@ -289,12 +324,12 @@ export default function DashboardPage({ event, showToast }) {
           <div className="card-header">
             <div className="card-header-title">
               <div className="icon-wrapper icon-calendar">
-                <Calendar size={18} />
+                <Calendar size={18} aria-hidden="true" />
               </div>
               <h3>Task Timeline</h3>
             </div>
             <Link to="/timeline" className="card-link" id="link-view-timeline">
-              Full Schedule <ChevronRight size={16} />
+              Full Schedule <ChevronRight size={16} aria-hidden="true" />
             </Link>
           </div>
           <div className="card-body">
@@ -319,7 +354,7 @@ export default function DashboardPage({ event, showToast }) {
                     onClick={() => handleTaskToggle(task.id)}
                   >
                     <div className="task-checkbox">
-                      {isCompleted ? <CheckCircle2 size={16} className="text-success" /> : <div className="checkbox-empty" />}
+                      {isCompleted ? <CheckCircle2 size={16} className="text-success" aria-hidden="true" /> : <div className="checkbox-empty" />}
                     </div>
                     <div className="task-meta">
                       <span className="task-title-text">{task.title}</span>
@@ -337,12 +372,12 @@ export default function DashboardPage({ event, showToast }) {
           <div className="card-header">
             <div className="card-header-title">
               <div className="icon-wrapper icon-users">
-                <Users size={18} />
+                <Users size={18} aria-hidden="true" />
               </div>
               <h3>Vendor Coordination</h3>
             </div>
             <Link to="/vendors" className="card-link" id="link-view-vendors">
-              Checklist <ChevronRight size={16} />
+              Checklist <ChevronRight size={16} aria-hidden="true" />
             </Link>
           </div>
           <div className="card-body">
@@ -360,7 +395,7 @@ export default function DashboardPage({ event, showToast }) {
               ))}
             </div>
             <div className="card-footer-tip">
-              <Sparkles size={14} className="text-accent" />
+              <Sparkles size={14} className="text-accent" aria-hidden="true" />
               <span>Includes red flags & negotiation tips</span>
             </div>
           </div>
@@ -371,12 +406,12 @@ export default function DashboardPage({ event, showToast }) {
           <div className="card-header">
             <div className="card-header-title">
               <div className="icon-wrapper icon-ideas">
-                <Sparkles size={18} />
+                <Sparkles size={18} aria-hidden="true" />
               </div>
               <h3>Personalized Ideas</h3>
             </div>
             <Link to="/ideas" className="card-link" id="link-view-ideas">
-              Explore Themes <ChevronRight size={16} />
+              Explore Themes <ChevronRight size={16} aria-hidden="true" />
             </Link>
           </div>
           <div className="card-body">
@@ -401,7 +436,7 @@ export default function DashboardPage({ event, showToast }) {
       <div className="chat-teaser-banner glass-card">
         <div className="teaser-content">
           <div className="teaser-icon">
-            <MessageSquare size={28} />
+            <MessageSquare size={28} aria-hidden="true" />
           </div>
           <div>
             <h3>Need personalized planning advice or contract reviews?</h3>
@@ -410,24 +445,30 @@ export default function DashboardPage({ event, showToast }) {
         </div>
         <Link to="/chat" className="btn-secondary btn-chat-launch" id="btn-open-chat">
           Chat with AI Assistant
-          <ArrowRight size={16} />
+          <ArrowRight size={16} aria-hidden="true" />
         </Link>
       </div>
 
       {/* Adaptive Replanning Modal */}
       {showAdaptiveModal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="adaptive-title">
-          <div className="modal-backdrop" onClick={() => setShowAdaptiveModal(false)} />
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="adaptive-title"
+          id="adaptive-replanning-modal"
+        >
+          <div className="modal-backdrop" onClick={() => setShowAdaptiveModal(false)} aria-hidden="true" />
           <div className="modal-content glass-card adaptive-modal-box">
             <div className="modal-header">
               <div className="modal-icon">
-                <RefreshCw size={22} />
+                <RefreshCw size={22} aria-hidden="true" />
               </div>
               <h2 id="adaptive-title" className="modal-title">AI Adaptive Replanner</h2>
               <button
                 className="modal-close"
                 onClick={() => setShowAdaptiveModal(false)}
-                aria-label="Close"
+                aria-label="Close modal"
               >
                 ✕
               </button>
@@ -512,12 +553,12 @@ export default function DashboardPage({ event, showToast }) {
                 >
                   {isAnalyzingChange ? (
                     <>
-                      <Sparkles className="spin-icon" size={16} />
+                      <Sparkles className="spin-icon" size={16} aria-hidden="true" />
                       Analyzing Tradeoffs...
                     </>
                   ) : (
                     <>
-                      <Sparkles size={16} />
+                      <Sparkles size={16} aria-hidden="true" />
                       Simulate Impact & Tradeoffs
                     </>
                   )}
@@ -572,7 +613,7 @@ export default function DashboardPage({ event, showToast }) {
                       onClick={handleApplyChange}
                       id="btn-apply-adaptive-plan"
                     >
-                      <CheckCircle2 size={16} />
+                      <CheckCircle2 size={16} aria-hidden="true" />
                       Accept & Update Active Plan
                     </button>
                   </div>
@@ -585,3 +626,22 @@ export default function DashboardPage({ event, showToast }) {
     </div>
   );
 }
+
+DashboardPage.propTypes = {
+  event: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    eventName: PropTypes.string.isRequired,
+    eventType: PropTypes.string.isRequired,
+    budget: PropTypes.number.isRequired,
+    guestCount: PropTypes.number.isRequired,
+    eventDate: PropTypes.string,
+    priorities: PropTypes.string,
+    culturalContext: PropTypes.string,
+    budgetBreakdown: PropTypes.object,
+    timeline: PropTypes.object,
+    vendorChecklist: PropTypes.object,
+    ideas: PropTypes.object,
+    completedTasks: PropTypes.array,
+  }).isRequired,
+  showToast: PropTypes.func.isRequired,
+};

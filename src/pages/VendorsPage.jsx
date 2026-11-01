@@ -1,12 +1,24 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import {
   Users, HelpCircle, AlertTriangle, ShieldCheck,
   CheckCircle2, Plus, Trash2, RefreshCw, Phone, DollarSign
 } from 'lucide-react';
 import { updateEvent, formatCurrency } from '../services/eventStore';
 import { generateVendorChecklist } from '../services/gemini';
+import { sanitizeInput, sanitizeBudget } from '../utils/sanitize';
+import { useModalEscape } from '../hooks/useModalEscape';
 import './VendorsPage.css';
 
+/**
+ * Vendor Coordination & Quotation Comparator Page.
+ * Displays interview questions, red flags, negotiation tactics, contract shields,
+ * and tracks real vendor quotes against AI pricing benchmarks.
+ *
+ * @param {Object} props
+ * @param {Object} props.event - Active event record
+ * @param {function(string, string=): void} props.showToast - Toast notification dispatcher
+ */
 export default function VendorsPage({ event, showToast }) {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [activeTab, setActiveTab] = useState('categories'); // 'categories' | 'comparator' | 'contracts'
@@ -19,6 +31,9 @@ export default function VendorsPage({ event, showToast }) {
   const [newVendorPhone, setNewVendorPhone] = useState('');
   const [newVendorStatus, setNewVendorStatus] = useState('Quoted');
   const [newVendorNotes, setNewVendorNotes] = useState('');
+
+  // Keyboard accessibility for vendor modal
+  useModalEscape(showAddVendorModal, () => setShowAddVendorModal(false));
 
   const vendorData = event.vendorChecklist || {
     vendors: [],
@@ -45,22 +60,24 @@ export default function VendorsPage({ event, showToast }) {
 
   const handleAddShortlistedVendor = (e) => {
     e.preventDefault();
-    if (!newVendorName.trim() || !newVendorQuote) return;
+    const cleanName = sanitizeInput(newVendorName.trim());
+    const cleanQuote = sanitizeBudget(newVendorQuote);
+    if (!cleanName || cleanQuote <= 0) return;
 
     const newEntry = {
       id: `vquote-${Date.now()}`,
-      name: newVendorName.trim(),
-      category: newVendorCat,
-      quote: Number(newVendorQuote),
-      phone: newVendorPhone.trim(),
-      status: newVendorStatus,
-      notes: newVendorNotes.trim(),
+      name: cleanName,
+      category: sanitizeInput(newVendorCat),
+      quote: cleanQuote,
+      phone: sanitizeInput(newVendorPhone.trim()),
+      status: sanitizeInput(newVendorStatus),
+      notes: sanitizeInput(newVendorNotes.trim()),
       createdAt: new Date().toISOString()
     };
 
     const updated = [...shortlistedVendors, newEntry];
     updateEvent(event.id, { shortlistedVendors: updated });
-    showToast(`Added ${newVendorName} to comparison board!`, 'success');
+    showToast(`Added ${cleanName} to comparison board!`, 'success');
 
     setShowAddVendorModal(false);
     setNewVendorName('');
@@ -76,7 +93,7 @@ export default function VendorsPage({ event, showToast }) {
   };
 
   const handleUpdateStatus = (id, newStatus) => {
-    const updated = shortlistedVendors.map(v => v.id === id ? { ...v, status: newStatus } : v);
+    const updated = shortlistedVendors.map(v => v.id === id ? { ...v, status: sanitizeInput(newStatus) } : v);
     updateEvent(event.id, { shortlistedVendors: updated });
     showToast(`Status updated to ${newStatus}`, 'info');
   };
@@ -118,7 +135,7 @@ export default function VendorsPage({ event, showToast }) {
             disabled={isRegenerating}
             id="btn-regenerate-vendors"
           >
-            <RefreshCw className={isRegenerating ? 'spin-icon' : ''} size={16} />
+            <RefreshCw className={isRegenerating ? 'spin-icon' : ''} size={16} aria-hidden="true" />
             {isRegenerating ? 'Refreshing...' : 'Regenerate Guidance'}
           </button>
           <button
@@ -126,36 +143,45 @@ export default function VendorsPage({ event, showToast }) {
             onClick={() => setShowAddVendorModal(true)}
             id="btn-add-vendor-quote"
           >
-            <Plus size={16} /> Add Vendor Quote
+            <Plus size={16} aria-hidden="true" /> Add Vendor Quote
           </button>
         </div>
       </div>
 
       {/* Tabs Bar */}
-      <div className="vendor-tabs-bar">
+      <div className="vendor-tabs-bar" role="tablist" aria-label="Vendor sections">
         <button
           className={`vendor-tab-btn ${activeTab === 'categories' ? 'active' : ''}`}
           onClick={() => setActiveTab('categories')}
+          role="tab"
+          aria-selected={activeTab === 'categories'}
+          id="tab-categories"
         >
-          <Users size={16} /> AI Category Guides & Questions
+          <Users size={16} aria-hidden="true" /> AI Category Guides & Questions
         </button>
         <button
           className={`vendor-tab-btn ${activeTab === 'comparator' ? 'active' : ''}`}
           onClick={() => setActiveTab('comparator')}
+          role="tab"
+          aria-selected={activeTab === 'comparator'}
+          id="tab-comparator"
         >
-          <DollarSign size={16} /> Quotation Comparator ({shortlistedVendors.length})
+          <DollarSign size={16} aria-hidden="true" /> Quotation Comparator ({shortlistedVendors.length})
         </button>
         <button
           className={`vendor-tab-btn ${activeTab === 'contracts' ? 'active' : ''}`}
           onClick={() => setActiveTab('contracts')}
+          role="tab"
+          aria-selected={activeTab === 'contracts'}
+          id="tab-contracts"
         >
-          <ShieldCheck size={16} /> Negotiation & Contract Shield
+          <ShieldCheck size={16} aria-hidden="true" /> Negotiation & Contract Shield
         </button>
       </div>
 
       {/* TAB 1: Categories Guide */}
       {activeTab === 'categories' && (
-        <div className="categories-tab-content animate-fade-in">
+        <div className="categories-tab-content animate-fade-in" role="tabpanel" aria-labelledby="tab-categories">
           <div className="vendor-cards-grid">
             {(vendorData.vendors || []).map((v, idx) => {
               return (
@@ -176,7 +202,7 @@ export default function VendorsPage({ event, showToast }) {
                     {/* Questions */}
                     <div className="vcard-section">
                       <h4 className="vsection-title text-accent">
-                        <HelpCircle size={14} /> Questions to Ask:
+                        <HelpCircle size={14} aria-hidden="true" /> Questions to Ask:
                       </h4>
                       <ul className="questions-list">
                         {(v.questionsToAsk || []).map((q, qIdx) => (
@@ -188,7 +214,7 @@ export default function VendorsPage({ event, showToast }) {
                     {/* Red flags */}
                     <div className="vcard-section">
                       <h4 className="vsection-title text-warning">
-                        <AlertTriangle size={14} /> Red Flags to Watch Out For:
+                        <AlertTriangle size={14} aria-hidden="true" /> Red Flags to Watch Out For:
                       </h4>
                       <ul className="red-flags-list">
                         {(v.redFlags || []).map((rf, rfIdx) => (
@@ -213,7 +239,7 @@ export default function VendorsPage({ event, showToast }) {
 
       {/* TAB 2: Quotation Comparator */}
       {activeTab === 'comparator' && (
-        <div className="comparator-tab-content animate-fade-in">
+        <div className="comparator-tab-content animate-fade-in" role="tabpanel" aria-labelledby="tab-comparator">
           <div className="comparator-hero glass-card">
             <div>
               <h3>Compare Real Quotations Against AI Benchmarks</h3>
@@ -223,13 +249,13 @@ export default function VendorsPage({ event, showToast }) {
               className="btn-primary"
               onClick={() => setShowAddVendorModal(true)}
             >
-              <Plus size={16} /> Add Vendor Quote
+              <Plus size={16} aria-hidden="true" /> Add Vendor Quote
             </button>
           </div>
 
           {shortlistedVendors.length === 0 ? (
             <div className="empty-comparator glass-card">
-              <Users size={36} className="text-tertiary" />
+              <Users size={36} className="text-tertiary" aria-hidden="true" />
               <h4>No vendor quotes added yet</h4>
               <p>Add quotes from caterers, photographers, venues or DJs to compare their pricing with AI benchmarks.</p>
               <button
@@ -277,7 +303,9 @@ export default function VendorsPage({ event, showToast }) {
                     </div>
 
                     <div className="status-cell">
+                      <label htmlFor={`vendor-status-${vendor.id}`} className="sr-only">Update vendor status</label>
                       <select
+                        id={`vendor-status-${vendor.id}`}
                         className="status-dropdown"
                         value={vendor.status}
                         onChange={(e) => handleUpdateStatus(vendor.id, e.target.value)}
@@ -292,16 +320,17 @@ export default function VendorsPage({ event, showToast }) {
 
                     <div className="action-cell">
                       {vendor.phone && (
-                        <a href={`tel:${vendor.phone}`} className="phone-link" title={`Call ${vendor.phone}`}>
-                          <Phone size={14} />
+                        <a href={`tel:${vendor.phone}`} className="phone-link" title={`Call ${vendor.phone}`} aria-label={`Call ${vendor.name} at ${vendor.phone}`}>
+                          <Phone size={14} aria-hidden="true" />
                         </a>
                       )}
                       <button
                         className="btn-icon-danger"
                         onClick={() => handleDeleteVendorQuote(vendor.id)}
                         title="Delete quote"
+                        aria-label={`Delete quote from ${vendor.name}`}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={14} aria-hidden="true" />
                       </button>
                     </div>
                   </div>
@@ -314,11 +343,11 @@ export default function VendorsPage({ event, showToast }) {
 
       {/* TAB 3: Negotiation & Contracts */}
       {activeTab === 'contracts' && (
-        <div className="contracts-tab-content animate-fade-in">
+        <div className="contracts-tab-content animate-fade-in" role="tabpanel" aria-labelledby="tab-contracts">
           <div className="contracts-grid">
             <div className="contract-card glass-card">
               <div className="card-top-icon">
-                <DollarSign size={22} className="text-secondary" />
+                <DollarSign size={22} className="text-secondary" aria-hidden="true" />
                 <h3>Indian Event Negotiation Tactics</h3>
               </div>
               <p className="card-intro">
@@ -327,7 +356,7 @@ export default function VendorsPage({ event, showToast }) {
               <ul className="checklist-bullet-list">
                 {(vendorData.negotiationTips || []).map((tip, idx) => (
                   <li key={idx}>
-                    <CheckCircle2 size={16} className="text-secondary" />
+                    <CheckCircle2 size={16} className="text-secondary" aria-hidden="true" />
                     <span>{tip}</span>
                   </li>
                 ))}
@@ -336,7 +365,7 @@ export default function VendorsPage({ event, showToast }) {
 
             <div className="contract-card glass-card">
               <div className="card-top-icon">
-                <ShieldCheck size={22} className="text-success" />
+                <ShieldCheck size={22} className="text-success" aria-hidden="true" />
                 <h3>Contract & Advance Payment Checklist</h3>
               </div>
               <p className="card-intro">
@@ -345,7 +374,7 @@ export default function VendorsPage({ event, showToast }) {
               <ul className="checklist-bullet-list">
                 {(vendorData.contractChecklist || []).map((item, idx) => (
                   <li key={idx}>
-                    <CheckCircle2 size={16} className="text-success" />
+                    <CheckCircle2 size={16} className="text-success" aria-hidden="true" />
                     <span>{item}</span>
                   </li>
                 ))}
@@ -357,12 +386,17 @@ export default function VendorsPage({ event, showToast }) {
 
       {/* Add Vendor Quote Modal */}
       {showAddVendorModal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-backdrop" onClick={() => setShowAddVendorModal(false)} />
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-vendor-modal-title"
+        >
+          <div className="modal-backdrop" onClick={() => setShowAddVendorModal(false)} aria-hidden="true" />
           <div className="modal-content glass-card vendor-modal-box">
             <div className="modal-header">
-              <h3 className="modal-title">Record Vendor Quotation</h3>
-              <button className="modal-close" onClick={() => setShowAddVendorModal(false)}>✕</button>
+              <h3 className="modal-title" id="add-vendor-modal-title">Record Vendor Quotation</h3>
+              <button className="modal-close" onClick={() => setShowAddVendorModal(false)} aria-label="Close modal">✕</button>
             </div>
 
             <form onSubmit={handleAddShortlistedVendor}>
@@ -461,3 +495,13 @@ export default function VendorsPage({ event, showToast }) {
     </div>
   );
 }
+
+VendorsPage.propTypes = {
+  event: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    eventName: PropTypes.string.isRequired,
+    vendorChecklist: PropTypes.object,
+    shortlistedVendors: PropTypes.array,
+  }).isRequired,
+  showToast: PropTypes.func.isRequired,
+};

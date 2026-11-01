@@ -9,6 +9,7 @@
  */
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { geminiRateLimiter } from '../utils/rateLimiter.js';
+import { sanitizeErrorMessage } from '../utils/sanitize.js';
 
 /** Validates and retrieves the API key from multiple potential sources */
 export function getApiKey() {
@@ -79,7 +80,10 @@ INDIAN CONTEXT AWARENESS:
 Always respond in valid JSON when requested, and in warm, concise conversational markdown when discussing.`;
 
 /** Helper to clean and extract JSON from markdown output */
-function extractJSON(text) {
+export function extractJSON(text) {
+  if (!text || typeof text !== 'string') {
+    throw new Error('Input must be a non-empty string');
+  }
   try {
     const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, text];
     const candidate = jsonMatch[1].trim();
@@ -90,6 +94,11 @@ function extractJSON(text) {
     const lastBrace = text.lastIndexOf('}');
     if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
       return JSON.parse(text.substring(firstBrace, lastBrace + 1));
+    }
+    const firstBracket = text.indexOf('[');
+    const lastBracket = text.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+      return JSON.parse(text.substring(firstBracket, lastBracket + 1));
     }
     throw err;
   }
@@ -109,7 +118,7 @@ export async function sendMessage(userMessage, eventContext = {}) {
       const result = await aiModel.generateContent(prompt);
       return result.response.text();
     } catch (error) {
-      console.warn('Gemini API call failed, using intelligent fallback response:', error);
+      console.warn('Gemini API call failed, using intelligent fallback response:', sanitizeErrorMessage(error));
     }
   }
 
@@ -162,7 +171,7 @@ Ensure all category amounts plus contingency sum to total budget.`;
       const result = await aiModel.generateContent(prompt);
       return extractJSON(result.response.text());
     } catch (error) {
-      console.warn('Gemini budget generation failed, falling back to smart budget model:', error);
+      console.warn('Gemini budget generation failed, falling back to smart budget model:', sanitizeErrorMessage(error));
     }
   }
 
@@ -225,7 +234,7 @@ Return this JSON structure:
       const result = await aiModel.generateContent(prompt);
       return extractJSON(result.response.text());
     } catch (error) {
-      console.warn('Gemini timeline generation failed, falling back to smart timeline model:', error);
+      console.warn('Gemini timeline generation failed, falling back to smart timeline model:', sanitizeErrorMessage(error));
     }
   }
 
@@ -276,7 +285,7 @@ Return this JSON structure:
       const result = await aiModel.generateContent(prompt);
       return extractJSON(result.response.text());
     } catch (error) {
-      console.warn('Gemini vendor checklist failed, falling back to smart vendor model:', error);
+      console.warn('Gemini vendor checklist failed, falling back to smart vendor model:', sanitizeErrorMessage(error));
     }
   }
 
@@ -347,7 +356,7 @@ Return this JSON structure:
       const result = await aiModel.generateContent(prompt);
       return extractJSON(result.response.text());
     } catch (error) {
-      console.warn('Gemini ideas generation failed, falling back to smart ideas model:', error);
+      console.warn('Gemini ideas generation failed, falling back to smart ideas model:', sanitizeErrorMessage(error));
     }
   }
 
@@ -404,7 +413,7 @@ Return this JSON structure:
       const result = await aiModel.generateContent(prompt);
       return extractJSON(result.response.text());
     } catch (error) {
-      console.warn('Gemini adaptive analysis failed, falling back to smart replanner:', error);
+      console.warn('Gemini adaptive analysis failed, falling back to smart replanner:', sanitizeErrorMessage(error));
     }
   }
 
@@ -431,7 +440,7 @@ export async function chat(messages, eventContext = {}) {
       const result = await aiModel.generateContent(prompt);
       return result.response.text();
     } catch (error) {
-      console.warn('Gemini chat failed, using fallback chat model:', error);
+      console.warn('Gemini chat failed, using fallback chat model:', sanitizeErrorMessage(error));
     }
   }
 

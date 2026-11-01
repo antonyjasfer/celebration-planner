@@ -1,14 +1,24 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Key, X, ExternalLink } from 'lucide-react';
+import { useModalEscape } from '../../hooks/useModalEscape';
+import { validateApiKeyFormat, maskApiKey } from '../../utils/sanitize';
 import './ApiKeyModal.css';
 
 /**
- * Modal for configuring the Gemini API key.
- * Provides instructions and validates the key format.
+ * Modal for configuring and securely managing the Google Gemini API key.
+ * Provides clear instructions, format validation, and keyboard accessibility.
+ *
+ * @param {Object} props
+ * @param {() => void} props.onClose - Callback triggered when the modal is closed
  */
 export default function ApiKeyModal({ onClose }) {
   const [apiKey, setApiKey] = useState('');
   const [saved, setSaved] = useState(false);
+  const [formatError, setFormatError] = useState(false);
+
+  // Accessible keyboard Escape key dismissal
+  useModalEscape(true, onClose);
 
   const getSavedKey = () => {
     return (
@@ -20,18 +30,27 @@ export default function ApiKeyModal({ onClose }) {
   };
 
   const currentKey = getSavedKey();
-  const isConfigured = currentKey && currentKey !== 'your_gemini_api_key_here';
+  const isConfigured = Boolean(currentKey && currentKey !== 'your_gemini_api_key_here');
 
   const handleSave = () => {
     const trimmed = apiKey.trim();
     if (!trimmed) return;
+
+    if (!validateApiKeyFormat(trimmed)) {
+      setFormatError(true);
+      return;
+    }
+
+    setFormatError(false);
     localStorage.setItem('gemini_api_key', trimmed);
     sessionStorage.setItem('gemini_api_key', trimmed);
     window.__GEMINI_API_KEY__ = trimmed;
     setSaved(true);
 
     setTimeout(() => {
-      window.location.reload();
+      if (typeof window !== 'undefined' && window.location?.reload) {
+        window.location.reload();
+      }
     }, 1200);
   };
 
@@ -42,12 +61,20 @@ export default function ApiKeyModal({ onClose }) {
     setSaved(false);
     setApiKey('');
     setTimeout(() => {
-      window.location.reload();
+      if (typeof window !== 'undefined' && window.location?.reload) {
+        window.location.reload();
+      }
     }, 800);
   };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="api-key-title" id="api-key-modal">
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="api-key-title"
+      id="api-key-modal"
+    >
       <div className="modal-backdrop" onClick={onClose} aria-hidden="true" />
       <div className="modal-content glass-card">
         <div className="modal-header">
@@ -55,28 +82,34 @@ export default function ApiKeyModal({ onClose }) {
             <Key size={24} aria-hidden="true" />
           </div>
           <h2 id="api-key-title" className="modal-title">Gemini API Key</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Close modal" id="btn-close-api-modal">
-            <X size={20} />
+          <button
+            className="modal-close"
+            onClick={onClose}
+            aria-label="Close modal"
+            id="btn-close-api-modal"
+          >
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 
         <div className="modal-body">
           {saved && (
-            <div className="api-saved-msg" style={{ marginBottom: '1rem', color: '#10b981', fontWeight: 600 }}>
+            <div className="api-saved-msg">
               ✓ Key saved! Reloading...
             </div>
           )}
           {isConfigured ? (
-            <div className="api-status-configured" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div className="status-dot status-dot-active" />
-                <p style={{ margin: 0 }}>API key is configured and active.</p>
+            <div className="api-status-configured-box">
+              <div className="api-status-indicator">
+                <div className="status-dot status-dot-active" aria-hidden="true" />
+                <p className="api-status-text">
+                  API key is configured and active ({maskApiKey(currentKey)})
+                </p>
               </div>
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary btn-reset-key"
                 onClick={handleClear}
-                style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
                 id="btn-clear-api-key"
               >
                 Reset / Change API Key
@@ -86,12 +119,12 @@ export default function ApiKeyModal({ onClose }) {
             <>
               <p className="modal-description">
                 CelebriPlan uses Google Gemini AI to power its planning features.
-                You need a free API key to get started.
+                You can provide your free API key below or test immediately with the built-in intelligent engine.
               </p>
 
               <div className="api-steps">
                 <div className="api-step">
-                  <span className="step-number">1</span>
+                  <span className="step-number" aria-hidden="true">1</span>
                   <div>
                     <p>Visit Google AI Studio to get your free API key:</p>
                     <a
@@ -106,15 +139,15 @@ export default function ApiKeyModal({ onClose }) {
                   </div>
                 </div>
                 <div className="api-step">
-                  <span className="step-number">2</span>
+                  <span className="step-number" aria-hidden="true">2</span>
                   <p>
                     Create a <code>.env</code> file in the project root with:<br />
                     <code className="env-code">VITE_GEMINI_API_KEY=your_key_here</code>
                   </p>
                 </div>
                 <div className="api-step">
-                  <span className="step-number">3</span>
-                  <p>Restart the development server to apply the key.</p>
+                  <span className="step-number" aria-hidden="true">3</span>
+                  <p>Or paste your key below for this browsing session.</p>
                 </div>
               </div>
 
@@ -129,10 +162,18 @@ export default function ApiKeyModal({ onClose }) {
                   id="api-key-input"
                   className="form-input"
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    if (formatError) setFormatError(false);
+                  }}
                   placeholder="AIza..."
                   autoComplete="off"
                 />
+                {formatError && (
+                  <span className="form-hint" style={{ color: 'var(--color-error)' }}>
+                    Invalid Gemini API key format. It should start with alphanumeric characters.
+                  </span>
+                )}
               </div>
             </>
           )}
@@ -157,3 +198,7 @@ export default function ApiKeyModal({ onClose }) {
     </div>
   );
 }
+
+ApiKeyModal.propTypes = {
+  onClose: PropTypes.func.isRequired,
+};

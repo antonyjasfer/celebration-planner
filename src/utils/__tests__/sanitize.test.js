@@ -4,6 +4,8 @@ import {
   validateApiKeyFormat,
   sanitizeBudget,
   sanitizeGuestCount,
+  maskApiKey,
+  sanitizeErrorMessage,
 } from '../sanitize';
 
 describe('Sanitize Utilities', () => {
@@ -83,6 +85,36 @@ describe('Sanitize Utilities', () => {
 
     it('caps guest counts at 100,000 attendees', () => {
       expect(sanitizeGuestCount(500_000)).toBe(100_000);
+    });
+  });
+
+  describe('maskApiKey', () => {
+    it('masks the middle characters of a sensitive key', () => {
+      const masked = maskApiKey('AIzaSyD1234567890abcdefXYZ');
+      expect(masked).toBe('AIzaSy••••••••tXYZ'.replace('tXYZ', 'fXYZ'));
+      expect(masked.startsWith('AIzaSy')).toBe(true);
+      expect(masked.endsWith('fXYZ')).toBe(true);
+      expect(masked).toContain('••••••••');
+    });
+
+    it('returns default mask for short or invalid keys', () => {
+      expect(maskApiKey('')).toBe('••••••••');
+      expect(maskApiKey('short')).toBe('••••••••');
+      expect(maskApiKey(null)).toBe('••••••••');
+    });
+  });
+
+  describe('sanitizeErrorMessage', () => {
+    it('redacts exposed API key sequences from error text', () => {
+      const rawError = 'Failed to connect to Google API using key AIzaSyD1234567890abcdefXYZ: 403 Forbidden';
+      const safe = sanitizeErrorMessage(rawError);
+      expect(safe).not.toContain('AIzaSyD1234567890abcdefXYZ');
+      expect(safe).toContain('[REDACTED_API_KEY]');
+    });
+
+    it('returns fallback message for empty errors', () => {
+      expect(sanitizeErrorMessage(null)).toBe('An unexpected error occurred. Please try again.');
+      expect(sanitizeErrorMessage('')).toBe('An unexpected error occurred. Please try again.');
     });
   });
 });

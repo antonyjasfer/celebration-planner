@@ -1,12 +1,24 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import {
   Clock, CheckCircle2, AlertCircle,
   Plus, RefreshCw, Filter, Flag, Square
 } from 'lucide-react';
 import { updateEvent, toggleTask, formatDate, daysUntil, formatCurrency } from '../services/eventStore';
 import { generateTimeline } from '../services/gemini';
+import { sanitizeInput } from '../utils/sanitize';
+import { useModalEscape } from '../hooks/useModalEscape';
 import './TimelinePage.css';
 
+/**
+ * Event Roadmap & Timeline Page.
+ * Visualizes 4 chronological phases, interactive task completion,
+ * milestone deadlines, priority filters, and custom task creation.
+ *
+ * @param {Object} props
+ * @param {Object} props.event - Active event record
+ * @param {function(string, string=): void} props.showToast - Toast notification dispatcher
+ */
 export default function TimelinePage({ event, showToast }) {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [filterPriority, setFilterPriority] = useState('all');
@@ -20,6 +32,9 @@ export default function TimelinePage({ event, showToast }) {
   const [newTaskPriority, setNewTaskPriority] = useState('high');
   const [newTaskCategory, setNewTaskCategory] = useState('general');
   const [newTaskPhase, setNewTaskPhase] = useState(0);
+
+  // Keyboard accessibility for modal
+  useModalEscape(showAddTaskModal, () => setShowAddTaskModal(false));
 
   const timelineData = event.timeline || {
     eventDate: event.eventDate,
@@ -57,15 +72,16 @@ export default function TimelinePage({ event, showToast }) {
 
   const handleCreateTask = (e) => {
     e.preventDefault();
-    if (!newTaskTitle.trim()) return;
+    const cleanTitle = sanitizeInput(newTaskTitle.trim());
+    if (!cleanTitle) return;
 
     const newTask = {
       id: `task-custom-${Date.now()}`,
-      title: newTaskTitle.trim(),
-      description: newTaskDesc.trim(),
+      title: cleanTitle,
+      description: sanitizeInput(newTaskDesc.trim()),
       deadline: newTaskDeadline || event.eventDate,
-      priority: newTaskPriority,
-      category: newTaskCategory,
+      priority: sanitizeInput(newTaskPriority),
+      category: sanitizeInput(newTaskCategory),
       dependsOn: [],
       estimatedCost: 0,
       completed: false,
@@ -94,7 +110,7 @@ export default function TimelinePage({ event, showToast }) {
       }
     });
 
-    showToast(`Task "${newTaskTitle}" created!`, 'success');
+    showToast(`Task "${cleanTitle}" created!`, 'success');
     setShowAddTaskModal(false);
     setNewTaskTitle('');
     setNewTaskDesc('');
@@ -118,7 +134,7 @@ export default function TimelinePage({ event, showToast }) {
             disabled={isRegenerating}
             id="btn-regenerate-timeline"
           >
-            <RefreshCw className={isRegenerating ? 'spin-icon' : ''} size={16} />
+            <RefreshCw className={isRegenerating ? 'spin-icon' : ''} size={16} aria-hidden="true" />
             {isRegenerating ? 'Recalculating...' : 'Regenerate Timeline'}
           </button>
           <button
@@ -126,7 +142,7 @@ export default function TimelinePage({ event, showToast }) {
             onClick={() => setShowAddTaskModal(true)}
             id="btn-add-custom-task"
           >
-            <Plus size={16} /> Add Custom Task
+            <Plus size={16} aria-hidden="true" /> Add Custom Task
           </button>
         </div>
       </div>
@@ -151,7 +167,7 @@ export default function TimelinePage({ event, showToast }) {
             {timelineData.milestones.map((m, idx) => (
               <div key={idx} className="milestone-node glass-card">
                 <div className="milestone-badge">
-                  <Flag size={14} className="text-secondary" />
+                  <Flag size={14} className="text-secondary" aria-hidden="true" />
                   <span>{formatDate(m.date)}</span>
                 </div>
                 <h4 className="milestone-title">{m.title}</h4>
@@ -166,7 +182,7 @@ export default function TimelinePage({ event, showToast }) {
       {timelineData.urgentActions?.length > 0 && (
         <div className="urgent-actions-card glass-card">
           <div className="urgent-header">
-            <AlertCircle className="text-warning" size={18} />
+            <AlertCircle className="text-warning" size={18} aria-hidden="true" />
             <h3>Urgent Actions for this Week</h3>
           </div>
           <div className="urgent-items-list">
@@ -182,7 +198,7 @@ export default function TimelinePage({ event, showToast }) {
       {/* Task Filters */}
       <div className="filters-bar">
         <div className="filter-group">
-          <span className="filter-label"><Filter size={14} /> Status:</span>
+          <span className="filter-label"><Filter size={14} aria-hidden="true" /> Status:</span>
           <button
             className={`filter-btn ${filterStatus === 'all' ? 'active' : ''}`}
             onClick={() => setFilterStatus('all')}
@@ -266,12 +282,12 @@ export default function TimelinePage({ event, showToast }) {
                         <button
                           type="button"
                           className="task-toggle-btn"
-                          aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
+                          aria-label={isCompleted ? `Mark task ${task.title} incomplete` : `Mark task ${task.title} complete`}
                         >
                           {isCompleted ? (
-                            <CheckCircle2 size={20} className="text-success" />
+                            <CheckCircle2 size={20} className="text-success" aria-hidden="true" />
                           ) : (
-                            <Square size={20} className="text-tertiary" />
+                            <Square size={20} className="text-tertiary" aria-hidden="true" />
                           )}
                         </button>
 
@@ -289,7 +305,7 @@ export default function TimelinePage({ event, showToast }) {
                           <div className="task-footer-tags">
                             {task.deadline && (
                               <span className="task-tag deadline-tag">
-                                <Clock size={12} /> {formatDate(task.deadline)}
+                                <Clock size={12} aria-hidden="true" /> {formatDate(task.deadline)}
                               </span>
                             )}
                             {task.category && (
@@ -321,12 +337,17 @@ export default function TimelinePage({ event, showToast }) {
 
       {/* Add Custom Task Modal */}
       {showAddTaskModal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-backdrop" onClick={() => setShowAddTaskModal(false)} />
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-task-modal-title"
+        >
+          <div className="modal-backdrop" onClick={() => setShowAddTaskModal(false)} aria-hidden="true" />
           <div className="modal-content glass-card task-modal-box">
             <div className="modal-header">
-              <h3 className="modal-title">Create Custom Milestone Task</h3>
-              <button className="modal-close" onClick={() => setShowAddTaskModal(false)}>✕</button>
+              <h3 className="modal-title" id="add-task-modal-title">Create Custom Milestone Task</h3>
+              <button className="modal-close" onClick={() => setShowAddTaskModal(false)} aria-label="Close modal">✕</button>
             </div>
 
             <form onSubmit={handleCreateTask}>
@@ -425,3 +446,13 @@ export default function TimelinePage({ event, showToast }) {
     </div>
   );
 }
+
+TimelinePage.propTypes = {
+  event: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    eventDate: PropTypes.string,
+    timeline: PropTypes.object,
+    completedTasks: PropTypes.array,
+  }).isRequired,
+  showToast: PropTypes.func.isRequired,
+};

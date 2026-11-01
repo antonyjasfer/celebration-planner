@@ -61,3 +61,4 @@ describe('ErrorBoundary Component', () => {
     expect(reloadMock).toHaveBeenCalledTimes(1);
   });
 });
+

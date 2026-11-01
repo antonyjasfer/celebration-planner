@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar/Navbar';
+import { Navbar, Toast, ApiKeyModal } from './components';
+import { useToast } from './hooks/useToast';
 import LandingPage from './pages/LandingPage';
 import OnboardingPage from './pages/OnboardingPage';
 import DashboardPage from './pages/DashboardPage';
@@ -9,14 +10,13 @@ import TimelinePage from './pages/TimelinePage';
 import VendorsPage from './pages/VendorsPage';
 import IdeasPage from './pages/IdeasPage';
 import ChatPage from './pages/ChatPage';
-import ApiKeyModal from './components/ApiKeyModal/ApiKeyModal';
-import Toast from './components/Toast/Toast';
 import { isApiKeyConfigured } from './services/gemini';
 import { getActiveEvent, subscribe } from './services/eventStore';
 
 /**
  * Root application component.
- * Manages global state like the active event and API key configuration.
+ * Manages global routing, active event subscription, API key modal state,
+ * and high-priority toast notifications.
  */
 export default function App() {
   const [activeEvent, setActiveEvent] = useState(getActiveEvent);
@@ -24,19 +24,14 @@ export default function App() {
     const dismissed = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('api_key_modal_dismissed');
     return !isApiKeyConfigured() && !dismissed;
   });
-  const [toast, setToast] = useState(null);
+  const { toast, showToast, clearToast } = useToast();
 
-  // Subscribe to event store changes
+  // Subscribe to reactive event store changes
   useEffect(() => {
     const unsubscribe = subscribe(() => {
       setActiveEvent(getActiveEvent());
     });
     return unsubscribe;
-  }, []);
-
-  /** Shows a toast notification */
-  const showToast = useCallback((message, type = 'info') => {
-    setToast({ message, type, id: Date.now() });
   }, []);
 
   return (
@@ -106,10 +101,12 @@ export default function App() {
       </main>
 
       {showApiKeyModal && (
-        <ApiKeyModal onClose={() => {
-          sessionStorage.setItem('api_key_modal_dismissed', 'true');
-          setShowApiKeyModal(false);
-        }} />
+        <ApiKeyModal
+          onClose={() => {
+            sessionStorage.setItem('api_key_modal_dismissed', 'true');
+            setShowApiKeyModal(false);
+          }}
+        />
       )}
 
       {toast && (
@@ -117,7 +114,7 @@ export default function App() {
           key={toast.id}
           message={toast.message}
           type={toast.type}
-          onClose={() => setToast(null)}
+          onClose={clearToast}
         />
       )}
     </div>

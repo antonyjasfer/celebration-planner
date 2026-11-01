@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import {
   Sparkles, AlertTriangle, ShieldCheck,
   Plus, Trash2, ChevronDown, ChevronUp, RefreshCw, CheckCircle2,
@@ -6,8 +7,20 @@ import {
 } from 'lucide-react';
 import { updateEvent, formatCurrency } from '../services/eventStore';
 import { generateBudgetBreakdown, analyzeChangeImpact } from '../services/gemini';
+import { sanitizeInput, sanitizeBudget } from '../utils/sanitize';
+import { useModalEscape } from '../hooks/useModalEscape';
 import './BudgetPage.css';
 
+/**
+ * Smart Budget Allocation Page.
+ * Displays itemized category breakdowns, emergency contingency buffers,
+ * cost-per-guest analysis, custom line item management, and an interactive
+ * Tradeoff & Cut Simulator.
+ *
+ * @param {Object} props
+ * @param {Object} props.event - Active event record
+ * @param {function(string, string=): void} props.showToast - Toast notification dispatcher
+ */
 export default function BudgetPage({ event, showToast }) {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -20,6 +33,9 @@ export default function BudgetPage({ event, showToast }) {
   const [simulatorTarget, setSimulatorTarget] = useState(event.budget);
   const [isSimulating, setIsSimulating] = useState(false);
   const [tradeoffResult, setTradeoffResult] = useState(null);
+
+  // Keyboard accessibility for item modal
+  useModalEscape(Boolean(newItemModalCategory), () => setNewItemModalCategory(null));
 
   const budgetData = event.budgetBreakdown || {
     totalBudget: event.budget,
@@ -53,18 +69,20 @@ export default function BudgetPage({ event, showToast }) {
 
   const handleAddItem = (e) => {
     e.preventDefault();
-    if (!newItemName.trim() || !newItemAmount) return;
+    const cleanName = sanitizeInput(newItemName.trim());
+    const cleanAmount = sanitizeBudget(newItemAmount);
+    const cleanNotes = sanitizeInput(newItemNotes.trim());
+    if (!cleanName || cleanAmount <= 0) return;
 
     const updatedCategories = budgetData.categories.map(cat => {
       if (cat.name === newItemModalCategory) {
-        const itemCost = Number(newItemAmount);
         const newBreakdown = [
           ...(cat.breakdown || []),
-          { item: newItemName.trim(), estimated: itemCost, notes: newItemNotes.trim() }
+          { item: cleanName, estimated: cleanAmount, notes: cleanNotes }
         ];
         return {
           ...cat,
-          allocated: (cat.allocated || 0) + itemCost,
+          allocated: (cat.allocated || 0) + cleanAmount,
           breakdown: newBreakdown,
         };
       }
@@ -78,7 +96,7 @@ export default function BudgetPage({ event, showToast }) {
       }
     });
 
-    showToast(`Added "${newItemName}" to ${newItemModalCategory}`, 'success');
+    showToast(`Added "${cleanName}" to ${newItemModalCategory}`, 'success');
     setNewItemModalCategory(null);
     setNewItemName('');
     setNewItemAmount('');
@@ -119,7 +137,7 @@ export default function BudgetPage({ event, showToast }) {
     try {
       const result = await analyzeChangeImpact({
         currentPlan: event,
-        changeDescription: desc,
+        changeDescription: sanitizeInput(desc),
         changeType: 'budget'
       });
       setTradeoffResult(result);
@@ -161,7 +179,7 @@ export default function BudgetPage({ event, showToast }) {
           disabled={isRegenerating}
           id="btn-regenerate-budget"
         >
-          <RefreshCw className={isRegenerating ? 'spin-icon' : ''} size={16} />
+          <RefreshCw className={isRegenerating ? 'spin-icon' : ''} size={16} aria-hidden="true" />
           {isRegenerating ? 'Recalculating...' : 'Regenerate Budget'}
         </button>
       </div>
@@ -194,7 +212,7 @@ export default function BudgetPage({ event, showToast }) {
       <div className="simulator-card glass-card">
         <div className="simulator-header">
           <div className="sim-title-group">
-            <Sliders size={20} className="text-secondary" />
+            <Sliders size={20} className="text-secondary" aria-hidden="true" />
             <div>
               <h3>AI Tradeoff & Cut Simulator</h3>
               <p>Test "what-if" scenarios. Drag the slider to see how CelebriPlan AI protects quality while adjusting costs.</p>
@@ -209,6 +227,7 @@ export default function BudgetPage({ event, showToast }) {
               <span className="slider-current">{formatCurrency(simulatorTarget)}</span>
               <span>₹{Math.round(event.budget * 1.5).toLocaleString('en-IN')}</span>
             </div>
+            <label htmlFor="budget-simulator-slider" className="sr-only">Budget target slider</label>
             <input
               type="range"
               min={Math.round(event.budget * 0.5)}
@@ -218,6 +237,7 @@ export default function BudgetPage({ event, showToast }) {
               onChange={(e) => setSimulatorTarget(Number(e.target.value))}
               className="budget-slider"
               id="budget-simulator-slider"
+              aria-label="Target budget amount in rupees"
             />
           </div>
 
@@ -229,12 +249,12 @@ export default function BudgetPage({ event, showToast }) {
           >
             {isSimulating ? (
               <>
-                <Sparkles className="spin-icon" size={16} />
+                <Sparkles className="spin-icon" size={16} aria-hidden="true" />
                 Analyzing Tradeoffs...
               </>
             ) : (
               <>
-                <Sparkles size={16} />
+                <Sparkles size={16} aria-hidden="true" />
                 Evaluate Tradeoffs at {formatCurrency(simulatorTarget)}
               </>
             )}
@@ -273,7 +293,7 @@ export default function BudgetPage({ event, showToast }) {
                 onClick={handleApplySimulatedBudget}
                 id="btn-apply-sim-budget"
               >
-                <CheckCircle2 size={16} />
+                <CheckCircle2 size={16} aria-hidden="true" />
                 Apply {formatCurrency(tradeoffResult.revisedBudget?.revised || simulatorTarget)} as New Budget
               </button>
             </div>
@@ -300,7 +320,7 @@ export default function BudgetPage({ event, showToast }) {
                       <span className="cat-allocated-amt">{formatCurrency(cat.allocated)}</span>
                       <span className="cat-pct-amt">({cat.percentage}% of total)</span>
                     </div>
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    {isExpanded ? <ChevronUp size={20} aria-hidden="true" /> : <ChevronDown size={20} aria-hidden="true" />}
                   </div>
                 </div>
 
@@ -323,8 +343,9 @@ export default function BudgetPage({ event, showToast }) {
                             className="btn-icon-danger"
                             onClick={() => handleDeleteItem(cat.name, itemIdx)}
                             title="Delete item"
+                            aria-label={`Delete item ${item.item}`}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={14} aria-hidden="true" />
                           </button>
                         </div>
                       ))}
@@ -335,7 +356,7 @@ export default function BudgetPage({ event, showToast }) {
                         className="btn-secondary btn-sm"
                         onClick={() => setNewItemModalCategory(cat.name)}
                       >
-                        <Plus size={14} /> Add Line Item
+                        <Plus size={14} aria-hidden="true" /> Add Line Item
                       </button>
                     </div>
 
@@ -343,7 +364,7 @@ export default function BudgetPage({ event, showToast }) {
                     {cat.savingTips?.length > 0 && (
                       <div className="saving-tips-box">
                         <div className="saving-tips-title">
-                          <Lightbulb size={14} className="text-gold" />
+                          <Lightbulb size={14} className="text-gold" aria-hidden="true" />
                           <span>AI Cost-Optimization Tips for {cat.name}:</span>
                         </div>
                         <ul>
@@ -366,7 +387,7 @@ export default function BudgetPage({ event, showToast }) {
         {budgetData.warnings?.length > 0 && (
           <div className="insight-card glass-card card-warning">
             <div className="insight-header">
-              <AlertTriangle className="text-warning" size={18} />
+              <AlertTriangle className="text-warning" size={18} aria-hidden="true" />
               <h4>Budget Risk Warnings</h4>
             </div>
             <ul>
@@ -380,7 +401,7 @@ export default function BudgetPage({ event, showToast }) {
         {budgetData.suggestions?.length > 0 && (
           <div className="insight-card glass-card card-suggestion">
             <div className="insight-header">
-              <ShieldCheck className="text-success" size={18} />
+              <ShieldCheck className="text-success" size={18} aria-hidden="true" />
               <h4>Strategic Allocation Advice</h4>
             </div>
             <ul>
@@ -394,12 +415,17 @@ export default function BudgetPage({ event, showToast }) {
 
       {/* Add Custom Item Modal */}
       {newItemModalCategory && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-backdrop" onClick={() => setNewItemModalCategory(null)} />
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-item-modal-title"
+        >
+          <div className="modal-backdrop" onClick={() => setNewItemModalCategory(null)} aria-hidden="true" />
           <div className="modal-content glass-card item-modal-box">
             <div className="modal-header">
-              <h3 className="modal-title">Add Item to {newItemModalCategory}</h3>
-              <button className="modal-close" onClick={() => setNewItemModalCategory(null)}>✕</button>
+              <h3 className="modal-title" id="add-item-modal-title">Add Item to {newItemModalCategory}</h3>
+              <button className="modal-close" onClick={() => setNewItemModalCategory(null)} aria-label="Close modal">✕</button>
             </div>
             <form onSubmit={handleAddItem}>
               <div className="form-group">
@@ -448,3 +474,14 @@ export default function BudgetPage({ event, showToast }) {
     </div>
   );
 }
+
+BudgetPage.propTypes = {
+  event: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    eventName: PropTypes.string.isRequired,
+    budget: PropTypes.number.isRequired,
+    guestCount: PropTypes.number.isRequired,
+    budgetBreakdown: PropTypes.object,
+  }).isRequired,
+  showToast: PropTypes.func.isRequired,
+};

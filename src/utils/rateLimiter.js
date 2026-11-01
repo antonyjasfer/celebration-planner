@@ -1,7 +1,12 @@
 /**
- * Simple client-side rate limiter to prevent excessive API calls.
- * Uses a token bucket algorithm.
+ * Token-Bucket Rate Limiter
+ *
+ * Implements client-side rate limiting to prevent Gemini API quota exhaustion
+ * and guard against inadvertent spam or automated loops.
  */
+
+import { BOUNDS } from '../constants/index.js';
+
 export class RateLimiter {
   /**
    * Creates a new RateLimiter instance.
@@ -9,7 +14,7 @@ export class RateLimiter {
    * @param {number} maxRequests - Maximum number of requests allowed in the window
    * @param {number} windowMs - Time window in milliseconds
    */
-  constructor(maxRequests = 10, windowMs = 60000) {
+  constructor(maxRequests = BOUNDS.RATE_LIMIT_MAX_REQUESTS, windowMs = BOUNDS.RATE_LIMIT_WINDOW_MS) {
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
     /** @type {number[]} */
@@ -58,4 +63,7 @@ export class RateLimiter {
 }
 
 /** Singleton rate limiter for Gemini API calls (10 per minute) */
-export const geminiRateLimiter = new RateLimiter(10, 60000);
+export const geminiRateLimiter = new RateLimiter(
+  BOUNDS.RATE_LIMIT_MAX_REQUESTS,
+  BOUNDS.RATE_LIMIT_WINDOW_MS
+);

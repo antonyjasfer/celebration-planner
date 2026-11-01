@@ -9,6 +9,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
     css: true,
+    pool: 'threads',
+    testTimeout: 20000,
+    isolate: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

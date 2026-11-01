@@ -9,6 +9,7 @@ import {
   generatePersonalizedIdeas,
   analyzeChangeImpact,
   chat,
+  extractJSON,
 } from '../gemini';
 
 describe('Gemini AI Service & Resilient Engines', () => {
@@ -265,4 +266,34 @@ describe('Gemini AI Service & Resilient Engines', () => {
       expect(reply).toContain('Menu Curation');
     });
   });
+
+  describe('extractJSON Helper', () => {
+    it('extracts valid JSON from markdown code block', () => {
+      const markdown = 'Here is the response:\n```json\n{"totalBudget": 500000, "status": "approved"}\n```';
+      const parsed = extractJSON(markdown);
+      expect(parsed).toEqual({ totalBudget: 500000, status: 'approved' });
+    });
+
+    it('extracts valid JSON from raw JSON string', () => {
+      const raw = '{"key": "value", "count": 42}';
+      expect(extractJSON(raw)).toEqual({ key: 'value', count: 42 });
+    });
+
+    it('extracts JSON using relaxed brace boundaries when surrounded by text', () => {
+      const messy = 'Some preamble before JSON: {"message": "hello", "success": true} and trailing text after';
+      expect(extractJSON(messy)).toEqual({ message: 'hello', success: true });
+    });
+
+    it('extracts JSON array when formatted as an array', () => {
+      const arrayText = '```json\n["item1", "item2", "item3"]\n```';
+      expect(extractJSON(arrayText)).toEqual(['item1', 'item2', 'item3']);
+    });
+
+    it('throws error when input is empty, null, or not valid JSON', () => {
+      expect(() => extractJSON('')).toThrow('Input must be a non-empty string');
+      expect(() => extractJSON(null)).toThrow('Input must be a non-empty string');
+      expect(() => extractJSON('non json text with no braces')).toThrow();
+    });
+  });
 });
+

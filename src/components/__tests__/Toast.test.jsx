@@ -74,3 +74,4 @@ describe('Toast Component', () => {
     expect(toast).toHaveAttribute('aria-live', 'polite');
   });
 });
+
