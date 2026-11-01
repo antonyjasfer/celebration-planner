@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Sparkles, Calendar, Users, Wallet, CheckCircle2,
-  Clock, AlertTriangle, ArrowRight, RefreshCw, PlusCircle,
-  TrendingUp, Award, ChevronRight, MessageSquare, ShieldCheck,
-  Edit3, Trash2
+  Clock, ArrowRight, RefreshCw, Award, ChevronRight,
+  MessageSquare, ShieldCheck, Trash2
 } from 'lucide-react';
 import {
   updateEvent, deleteEvent, toggleTask, formatCurrency,
@@ -19,7 +18,7 @@ import './DashboardPage.css';
 
 export default function DashboardPage({ event, showToast }) {
   const navigate = useNavigate();
-  const [allEvents, setAllEvents] = useState(loadEvents);
+  const allEvents = loadEvents();
   const [isInitializingAI, setIsInitializingAI] = useState(false);
   const [showAdaptiveModal, setShowAdaptiveModal] = useState(false);
   const [changeType, setChangeType] = useState('budget');
@@ -58,6 +57,7 @@ export default function DashboardPage({ event, showToast }) {
     }
 
     initData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.id]);
 
   const allTasks = (event.timeline?.phases || []).flatMap(phase => phase.tasks || []);

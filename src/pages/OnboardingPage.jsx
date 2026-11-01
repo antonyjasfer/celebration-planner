@@ -4,13 +4,15 @@ import {
   Heart, PartyPopper, Music, Star, ArrowRight, ArrowLeft,
   Calendar, Users, Wallet, Sparkles, CheckCircle
 } from 'lucide-react';
-import { createEvent } from '../services/eventStore';
+import { createEvent, daysUntil } from '../services/eventStore';
 import './OnboardingPage.css';
 
 /**
  * Onboarding flow for creating a new event plan.
  * Multi-step form that collects all necessary context before AI generates the plan.
  */
+
+const TODAY_ISO = new Date().toISOString().split('T')[0];
 
 const EVENT_TYPES = [
   { id: 'wedding', label: 'Wedding', icon: Heart, desc: 'Plan your dream wedding ceremony and celebrations' },
@@ -76,7 +78,7 @@ export default function OnboardingPage({ showToast }) {
       priorities: form.priorities.join(', '),
     });
 
-    showToast(`"${event.eventName}" created! Let\'s start planning.`, 'success');
+    showToast(`"${event.eventName}" created! Let's start planning.`, 'success');
     navigate('/dashboard');
   };
 
@@ -206,11 +208,11 @@ export default function OnboardingPage({ showToast }) {
                   className="form-input"
                   value={form.eventDate}
                   onChange={e => updateField('eventDate', e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={TODAY_ISO}
                 />
                 {form.eventDate && (
                   <span className="form-hint days-hint">
-                    {Math.ceil((new Date(form.eventDate) - new Date()) / (1000 * 60 * 60 * 24))} days from today
+                    {daysUntil(form.eventDate)} days from today
                   </span>
                 )}
               </div>

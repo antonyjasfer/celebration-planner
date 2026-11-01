@@ -20,7 +20,10 @@ import { getActiveEvent, subscribe } from './services/eventStore';
  */
 export default function App() {
   const [activeEvent, setActiveEvent] = useState(getActiveEvent);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(() => {
+    const dismissed = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('api_key_modal_dismissed');
+    return !isApiKeyConfigured() && !dismissed;
+  });
   const [toast, setToast] = useState(null);
 
   // Subscribe to event store changes
@@ -31,14 +34,6 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Check for API key on first load only if never dismissed
-  useEffect(() => {
-    const dismissed = sessionStorage.getItem('api_key_modal_dismissed');
-    if (!isApiKeyConfigured() && !dismissed) {
-      setShowApiKeyModal(true);
-    }
-  }, []);
-
   /** Shows a toast notification */
   const showToast = useCallback((message, type = 'info') => {
     setToast({ message, type, id: Date.now() });
@@ -46,6 +41,9 @@ export default function App() {
 
   return (
     <div className="app" id="app-root">
+      <a href="#main-content" className="skip-link" aria-label="Skip to main content">
+        Skip to main content
+      </a>
       <Navbar
         activeEvent={activeEvent}
         onApiKeyClick={() => setShowApiKeyModal(true)}

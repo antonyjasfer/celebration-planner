@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import {
-  Wallet, Sparkles, AlertTriangle, ShieldCheck, TrendingDown,
+  Sparkles, AlertTriangle, ShieldCheck,
   Plus, Trash2, ChevronDown, ChevronUp, RefreshCw, CheckCircle2,
-  Sliders, ArrowRight, Lightbulb
+  Sliders, Lightbulb
 } from 'lucide-react';
 import { updateEvent, formatCurrency } from '../services/eventStore';
 import { generateBudgetBreakdown, analyzeChangeImpact } from '../services/gemini';

@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import {
-  Calendar, Clock, CheckCircle2, AlertCircle, Sparkles,
-  Plus, RefreshCw, Filter, Flag, ArrowRight, Layers,
-  CheckSquare, Square
+  Clock, CheckCircle2, AlertCircle,
+  Plus, RefreshCw, Filter, Flag, Square
 } from 'lucide-react';
 import { updateEvent, toggleTask, formatDate, daysUntil, formatCurrency } from '../services/eventStore';
 import { generateTimeline } from '../services/gemini';

@@ -5,6 +5,8 @@
  * Provides a simple pub/sub pattern for reactive updates.
  */
 
+import { sanitizeInput, sanitizeBudget, sanitizeGuestCount } from '../utils/sanitize.js';
+
 const STORAGE_KEY = 'celebriplan_events';
 const ACTIVE_EVENT_KEY = 'celebriplan_active_event';
 
@@ -86,15 +88,15 @@ export function createEvent(params) {
     id: generateId(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    eventType: params.eventType || 'other',
-    eventName: params.eventName || 'My Event',
-    budget: params.budget || 0,
-    guestCount: params.guestCount || 0,
-    eventDate: params.eventDate || '',
-    priorities: params.priorities || '',
-    preferences: params.preferences || '',
-    culturalContext: params.culturalContext || '',
-    additionalNotes: params.additionalNotes || '',
+    eventType: sanitizeInput(params.eventType) || 'other',
+    eventName: sanitizeInput(params.eventName) || 'My Event',
+    budget: sanitizeBudget(params.budget),
+    guestCount: sanitizeGuestCount(params.guestCount),
+    eventDate: sanitizeInput(params.eventDate) || '',
+    priorities: sanitizeInput(params.priorities) || '',
+    preferences: sanitizeInput(params.preferences) || '',
+    culturalContext: sanitizeInput(params.culturalContext) || '',
+    additionalNotes: sanitizeInput(params.additionalNotes) || '',
     // Generated data (populated by AI)
     budgetBreakdown: null,
     timeline: null,

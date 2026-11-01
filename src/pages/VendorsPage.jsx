@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import {
-  Users, Sparkles, HelpCircle, AlertTriangle, ShieldCheck,
-  CheckCircle2, Plus, Trash2, RefreshCw, Phone, DollarSign,
-  ChevronDown, ChevronUp, FileText, Check, Award
+  Users, HelpCircle, AlertTriangle, ShieldCheck,
+  CheckCircle2, Plus, Trash2, RefreshCw, Phone, DollarSign
 } from 'lucide-react';
 import { updateEvent, formatCurrency } from '../services/eventStore';
 import { generateVendorChecklist } from '../services/gemini';
@@ -11,7 +10,6 @@ import './VendorsPage.css';
 export default function VendorsPage({ event, showToast }) {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [activeTab, setActiveTab] = useState('categories'); // 'categories' | 'comparator' | 'contracts'
-  const [expandedVendor, setExpandedVendor] = useState(null);
 
   // New shortlisted vendor modal
   const [showAddVendorModal, setShowAddVendorModal] = useState(false);
@@ -160,7 +158,6 @@ export default function VendorsPage({ event, showToast }) {
         <div className="categories-tab-content animate-fade-in">
           <div className="vendor-cards-grid">
             {(vendorData.vendors || []).map((v, idx) => {
-              const isExpanded = expandedVendor === idx;
               return (
                 <div key={idx} className="vendor-guide-card glass-card">
                   <div className="vcard-top">

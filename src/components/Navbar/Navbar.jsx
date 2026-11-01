@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import {
-  Sparkles, Home, LayoutDashboard, Wallet, Calendar,
+  LayoutDashboard, Wallet, Calendar,
   Users, Lightbulb, MessageCircle, Settings, PartyPopper
 } from 'lucide-react';
 import './Navbar.css';

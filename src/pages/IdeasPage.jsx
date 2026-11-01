@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import {
-  Sparkles, Palette, Utensils, Music, Smile, RefreshCw,
-  Heart, ThumbsUp, ThumbsDown, CheckCircle2, ArrowRight,
-  Sliders, Star, DollarSign
+  Sparkles, Palette, Utensils, Music, Smile,
+  ThumbsUp, ThumbsDown, CheckCircle2,
+  Star, DollarSign
 } from 'lucide-react';
 import { updateEvent, formatCurrency } from '../services/eventStore';
 import { generatePersonalizedIdeas } from '../services/gemini';

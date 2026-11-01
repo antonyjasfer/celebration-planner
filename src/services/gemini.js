@@ -8,6 +8,7 @@
  * remains completely interactive even without an active key or during rate limits.
  */
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { geminiRateLimiter } from '../utils/rateLimiter.js';
 
 /** Validates and retrieves the API key from multiple potential sources */
 export function getApiKey() {
@@ -37,6 +38,10 @@ function getModel() {
   if (!key) {
     return null;
   }
+  if (!geminiRateLimiter.canMakeRequest()) {
+    console.warn('Client-side rate limit reached for Gemini API. Using fallback engine.');
+    return null;
+  }
   if (!model) {
     genAI = new GoogleGenerativeAI(key);
     model = genAI.getGenerativeModel({
@@ -49,6 +54,7 @@ function getModel() {
       },
     });
   }
+  geminiRateLimiter.recordRequest();
   return model;
 }
 
@@ -807,7 +813,7 @@ function getFallbackTimeline({ eventType, eventDate, guestCount }) {
   };
 }
 
-function getFallbackVendorChecklist({ eventType, budget }) {
+function getFallbackVendorChecklist({ eventType: _eventType, budget }) {
   const b = Number(budget) || 200000;
   return {
     vendors: [

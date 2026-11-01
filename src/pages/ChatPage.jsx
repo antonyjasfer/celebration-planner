@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import {
-  MessageSquare, Send, Sparkles, Trash2, Bot, User,
-  CornerDownLeft, ShieldCheck, Heart, Lightbulb
-} from 'lucide-react';
+import { Send, Sparkles, Trash2, Bot, User } from 'lucide-react';
 import { addChatMessage, updateEvent } from '../services/eventStore';
 import { chat } from '../services/gemini';
 import './ChatPage.css';
@@ -14,6 +11,8 @@ const QUICK_PROMPTS = [
   'Draft a polite WhatsApp message to chase pending RSVPs',
   'What are common hidden vendor charges to watch out for?'
 ];
+
+const getCurrentTimestamp = () => new Date().toISOString();
 
 export default function ChatPage({ event, showToast }) {
   const [messages, setMessages] = useState(() => {
@@ -58,7 +57,7 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
     const userMsg = {
       role: 'user',
       content: messageContent,
-      timestamp: new Date().toISOString()
+      timestamp: getCurrentTimestamp()
     };
 
     const newHistory = [...messages, userMsg];
@@ -74,7 +73,7 @@ Ask me anything — from vendor negotiation tactics, budget tradeoff simulations
       const assistantMsg = {
         role: 'assistant',
         content: aiReply,
-        timestamp: new Date().toISOString()
+        timestamp: getCurrentTimestamp()
       };
 
       setMessages(prev => [...prev, assistantMsg]);

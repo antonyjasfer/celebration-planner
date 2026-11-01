@@ -23,10 +23,11 @@ export default function ApiKeyModal({ onClose }) {
   const isConfigured = currentKey && currentKey !== 'your_gemini_api_key_here';
 
   const handleSave = () => {
-    if (!apiKey.trim()) return;
-    localStorage.setItem('gemini_api_key', apiKey.trim());
-    sessionStorage.setItem('gemini_api_key', apiKey.trim());
-    window.__GEMINI_API_KEY__ = apiKey.trim();
+    const trimmed = apiKey.trim();
+    if (!trimmed) return;
+    localStorage.setItem('gemini_api_key', trimmed);
+    sessionStorage.setItem('gemini_api_key', trimmed);
+    window.__GEMINI_API_KEY__ = trimmed;
     setSaved(true);
 
     setTimeout(() => {
@@ -60,6 +61,11 @@ export default function ApiKeyModal({ onClose }) {
         </div>
 
         <div className="modal-body">
+          {saved && (
+            <div className="api-saved-msg" style={{ marginBottom: '1rem', color: '#10b981', fontWeight: 600 }}>
+              ✓ Key saved! Reloading...
+            </div>
+          )}
           {isConfigured ? (
             <div className="api-status-configured" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -128,12 +134,6 @@ export default function ApiKeyModal({ onClose }) {
                   autoComplete="off"
                 />
               </div>
-
-              {saved && (
-                <p className="api-saved-msg">
-                  ✓ Key saved! Reloading...
-                </p>
-              )}
             </>
           )}
         </div>
